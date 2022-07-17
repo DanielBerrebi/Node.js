@@ -1,7 +1,7 @@
 const express=require('express');
-const request = require('request');
+const { response } = require("express");
 const bodyParser=require('body-parser');
-const https= require('https')
+const mailchimp  = require("@mailchimp/mailchimp_marketing");
 
 const app=express();
 app.use(express.static("public"))
@@ -11,41 +11,45 @@ app.use(bodyParser.urlencoded({extended:true}))
 app.get("/",function(req,res){
   res.sendFile(__dirname +"/signup.html");  
 });
+mailchimp.setConfig({
+  apiKey: "daa48819254fecc780d1560c6d01aaa4",
+    server: "us8"
+});
+
 app.post('/',function(req,res){
     const fname=req.body.fname;
     const lname=req.body.lname;
     const email=req.body.email; 
-    const data = {
-      members:[
-        {
-          email_address:email,
-          status:"subscribed",
-          merge_fields:{
-            FNAME:fname,
-            LNAME:lname
-          }
-        }
-      ]
-    }
-    const jsonData=JSON.stringify(data);
-    const url="https://us8.api.mailchimp.com/3.0/lists/ea279ba6e7"
-    const options={
-      methods:"POST",
-      auth:"Daniel:62800ea9499912f662f8945cdbabe5e2-us8"
-    }
-    const request=https.request(url,options,function(respone){
-      respone.on("data",function(data){
-        console.log(JSON.parse(data))
+    const listId = 'ea279ba6e7';
+    const subscribingUser = {firstName: fname, lastName: lname, email: email}
+    const run = async () => {
+      const response = await mailchimp.lists.batchListMembers(listId, {
+        members: [{
+            email_address: email,
+            status: "subscribed",
+            merge_fields: {
+                FNAME: fname,
+                LNAME: lname
+            }
+        }],
       })
+    }
+    res.sendFile(__dirname+"/failure.html");
+try{
+  run();
+  }
+    catch{
+      res.sendFile(__dirname+"/failure.html");
+      console.log('Error')
+    }
 
-    })
-    request.write(jsonData)
-    request.end();
-  });
+
+});
+
+app.post("/failure", function(req, res) {
+  res.redirect("/");
+});
 
 app.listen(3000,function(){
     console.log("server is running on port 3000")
 })
-
-//api key 62800ea9499912f662f8945cdbabe5e2-us8
-// audience id ea279ba6e7
